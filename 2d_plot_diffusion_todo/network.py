@@ -82,9 +82,16 @@ class SimpleNet(nn.Module):
         """
 
         ######## TODO ########
-        # DO NOT change the code outside this part.
+        layers = []
+        in_dim = dim_in
+        for hid_dim in dim_hids:
+            layers.append(TimeLinear(in_dim, hid_dim, num_timesteps))
+            in_dim = hid_dim
 
+        self.layers = nn.ModuleList(layers)
+        self.output = nn.Linear(in_dim, dim_out)
         ######################
+        
         
     def forward(self, x: torch.Tensor, t: torch.Tensor):
         """
@@ -96,7 +103,9 @@ class SimpleNet(nn.Module):
             t: the time that the forward diffusion has been running
         """
         ######## TODO ########
-        # DO NOT change the code outside this part.
-
+        for layer in self.layers:
+            x = layer(x, t)
+            x = F.silu(x)
+        x = self.output(x)
         ######################
         return x
