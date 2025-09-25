@@ -98,7 +98,7 @@ class DiffusionModule(nn.Module):
             # create a tensor of shape (2*batch_size,) where the first half is filled with zeros (i.e., null condition).
             assert class_label is not None
             assert len(class_label) == batch_size, f"len(class_label) != batch_size. {len(class_label)} != {batch_size}"
-            raise NotImplementedError("TODO")
+            class_label = torch.cat([torch.zeros_like(class_label), class_label], dim=0)
             #######################
 
         traj = [x_T]
@@ -107,7 +107,14 @@ class DiffusionModule(nn.Module):
             if do_classifier_free_guidance:
                 ######## TODO ########
                 # Assignment 2. Implement the classifier-free guidance.
-                raise NotImplementedError("TODO")
+                # 1. Duplicate x_t to shape (2*batch_size,...)
+                # 2. Pass through the network (half unconditional, half conditional).
+                # 3. Split outputs into (eps_uncond, eps_cond).
+                # 4. Combine: eps = eps_uncond + guidance_scale * (eps_cond - eps_uncond)
+                x_in = torch.cat([x_t, x_t], dim=0)
+                net_out = self.network(x_in, timestep=t.to(self.device), class_label=class_label)
+                eps_uncond, eps_cond = net_out.chunk(2, dim=0)
+                net_out = eps_uncond + guidance_scale * (eps_cond - eps_uncond)
                 #######################
             else:
                 # 如果是 conditional 就傳 class_label，否則就兩個參數
