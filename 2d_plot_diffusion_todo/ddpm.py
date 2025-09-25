@@ -107,8 +107,19 @@ class DiffusionModule(nn.Module):
         ######## TODO ########
         # DO NOT change the code outside this part.
         # compute x_t_prev.
+        # Handle different types of t input
         if isinstance(t, int):
             t = torch.tensor([t]).to(self.device)
+        elif hasattr(t, 'ndim') and t.ndim == 0:  # scalar tensor
+            t = t.unsqueeze(0)  # make it 1D
+        elif not hasattr(t, 'shape'):
+            # If t doesn't have shape attribute, convert to tensor
+            t = torch.tensor([t]).to(self.device)
+        
+        # Ensure t has the proper batch dimension
+        if hasattr(t, 'shape') and len(t.shape) > 0 and t.shape[0] == 1 and xt.shape[0] > 1:
+            t = t.expand(xt.shape[0])
+        
         eps_factor = (1 - extract(self.var_scheduler.alphas, t, xt)) / (
             1 - extract(self.var_scheduler.alphas_cumprod, t, xt)
         ).sqrt()
@@ -143,6 +154,7 @@ class DiffusionModule(nn.Module):
 
         #######################
         return x_t_prev
+
 
     @torch.no_grad()
     def p_sample_loop(self, shape):
