@@ -40,8 +40,17 @@ class BaseScheduler(nn.Module):
             # 2. Convert alphā_t into betas using:
             #       beta_t = 1 - alphā_t / alphā_{t-1}
             # 3. Return betas as a tensor of shape [num_train_timesteps].
-            raise NotImplementedError("TODO: Implement cosine beta schedule here!")
-               
+
+            s = 0.008
+            steps = num_train_timesteps
+            t = torch.arange(0, steps + 1, dtype=torch.float64)
+            f = lambda tau: torch.cos(((tau / steps + s) / (1 + s)) * torch.pi / 2) ** 2
+            alphas_cumprod = f(t) / f(torch.tensor(0.0))
+            betas = []
+            for i in range(1, steps + 1):
+                betas.append(1 - alphas_cumprod[i] / alphas_cumprod[i - 1])
+            betas = torch.tensor(betas, dtype=torch.float32)
+            #######################
         else:
             raise NotImplementedError(f"{mode} is not implemented.")
 
@@ -118,12 +127,27 @@ class DDPMScheduler(BaseScheduler):
             sample_prev: denoised image sample at timestep t-1
         """
         ######## TODO ########
-        # 1. Extract beta_t, alpha_t, and alpha_bar_t from the scheduler.
-        # 2. Compute the predicted mean μ_θ(x_t, t) = 1/√α_t * (x_t - (β_t/√(1-ᾱ_t)) * ε̂_θ).
-        # 3. Compute the posterior variance \tilde{β}_t = ((1-ᾱ_{t-1})/(1-ᾱ_t)) * β_t.
-        # 4. Add Gaussian noise scaled by √(\tilde{β}_t) unless t == 0.
-        # 5. Return the final sample at t-1.
-        sample_prev = None
+        beta_t = self._get_teeth(self.betas, torch.tensor([t], device=x_t.device))
+        alpha_t = self._get_teeth(self.alphas, torch.tensor([t], device=x_t.device))
+        alpha_bar_t = self._get_teeth(self.alphas_cumprod, torch.tensor([t], device=x_t.device))
+        alpha_bar_t_prev = self._get_teeth(
+            torch.cat([torch.tensor([1.0], device=x_t.device), self.alphas_cumprod[:-1]]),
+            torch.tensor([t], device=x_t.device),
+        )
+
+        # predicted mean
+        mean = (1.0 / torch.sqrt(alpha_t)) * (
+            x_t - (beta_t / torch.sqrt(1 - alpha_bar_t)) * eps_theta
+        )
+
+        # posterior variance
+        posterior_var = (1 - alpha_bar_t_prev) / (1 - alpha_bar_t) * beta_t
+
+        if t > 0:
+            noise = torch.randn_like(x_t)
+            sample_prev = mean + torch.sqrt(posterior_var) * noise
+        else:
+            sample_prev = mean
         #######################
         return sample_prev
 
@@ -140,8 +164,26 @@ class DDPMScheduler(BaseScheduler):
             sample_prev: denoised image sample at timestep t-1
         """
         ######## TODO ########
+        beta_t = self._get_teeth(self.betas, torch.tensor([t], device=x_t.device))
+        alpha_t = self._get_teeth(self.alphas, torch.tensor([t], device=x_t.device))
+        alpha_bar_t = self._get_teeth(self.alphas_cumprod, torch.tensor([t], device=x_t.device))
+        alpha_bar_t_prev = self._get_teeth(
+            torch.cat([torch.tensor([1.0], device=x_t.device), self.alphas_cumprod[:-1]]),
+            torch.tensor([t], device=x_t.device),
+        )
 
-        sample_prev = None
+        # mean using predicted x0
+        mean = (torch.sqrt(alpha_bar_t_prev) * beta_t / (1 - alpha_bar_t)) * x0_pred + \
+               (torch.sqrt(alpha_t) * (1 - alpha_bar_t_prev) / (1 - alpha_bar_t)) * x_t
+
+        # posterior variance
+        posterior_var = (1 - alpha_bar_t_prev) / (1 - alpha_bar_t) * beta_t
+
+        if t > 0:
+            noise = torch.randn_like(x_t)
+            sample_prev = mean + torch.sqrt(posterior_var) * noise
+        else:
+            sample_prev = mean
         #######################
         return sample_prev
 
@@ -158,8 +200,21 @@ class DDPMScheduler(BaseScheduler):
             sample_prev: denoised image sample at timestep t-1
         """
         ######## TODO ########
+        beta_t = self._get_teeth(self.betas, torch.tensor([t], device=x_t.device))
+        alpha_bar_t = self._get_teeth(self.alphas_cumprod, torch.tensor([t], device=x_t.device))
+        alpha_bar_t_prev = self._get_teeth(
+            torch.cat([torch.tensor([1.0], device=x_t.device), self.alphas_cumprod[:-1]]),
+            torch.tensor([t], device=x_t.device),
+        )
 
-        sample_prev = None
+        # posterior variance
+        posterior_var = (1 - alpha_bar_t_prev) / (1 - alpha_bar_t) * beta_t
+
+        if t > 0:
+            noise = torch.randn_like(x_t)
+            sample_prev = mean_theta + torch.sqrt(posterior_var) * noise
+        else:
+            sample_prev = mean_theta
         #######################
         return sample_prev
 
@@ -194,7 +249,10 @@ class DDPMScheduler(BaseScheduler):
         ######## TODO ########
         # DO NOT change the code outside this part.
         # Assignment 1. Implement the DDPM forward step.
-        x_t = None
+        alpha_bar_t = self._get_teeth(self.alphas_cumprod, t.to(self.alphas_cumprod.device))
+        sqrt_alpha_bar_t = torch.sqrt(alpha_bar_t)
+        sqrt_one_minus_alpha_bar_t = torch.sqrt(1 - alpha_bar_t)
+        x_t = sqrt_alpha_bar_t * x_0 + sqrt_one_minus_alpha_bar_t * eps
         #######################
 
         return x_t, eps

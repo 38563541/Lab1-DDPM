@@ -29,7 +29,11 @@ class DiffusionModule(nn.Module):
         # 2. Pass (x_t, timestep) into self.network, where the output should represent the clean sample x0_pred.
         # 3. Compute the loss as MSE(predicted x0_pred, ground-truth x0).
         ######################
-        loss = None
+        B = x0.shape[0]
+        t = self.var_scheduler.uniform_sample_t(B, x0.device)
+        x_t, eps = self.var_scheduler.add_noise(x0, t, eps=noise)
+        x0_pred = self.network(x_t, t, class_label) if class_label is not None else self.network(x_t, t)
+        loss = F.mse_loss(x0_pred, x0)
         return loss
     
     def get_loss_mean(self, x0, class_label=None, noise=None):
@@ -40,7 +44,17 @@ class DiffusionModule(nn.Module):
         # 3. Compute the *true* posterior mean from the closed-form DDPM formula (using x0, x_t, noise, and scheduler terms).
         # 4. Compute the loss as MSE(predicted mean, true mean).
         ######################
-        loss = None
+        B = x0.shape[0]
+        t = self.var_scheduler.uniform_sample_t(B, x0.device)
+        x_t, eps = self.var_scheduler.add_noise(x0, t, eps=noise)
+
+        # predicted mean from network
+        mean_pred = self.network(x_t, t, class_label) if class_label is not None else self.network(x_t, t)
+
+        # true posterior mean (DDPM closed-form)
+        mean_true, _ = self.var_scheduler.q_posterior(x0, x_t, t)
+
+        loss = F.mse_loss(mean_pred, mean_true)
         return loss
     
     def get_loss(self, x0, class_label=None, noise=None):
@@ -103,7 +117,6 @@ class DiffusionModule(nn.Module):
                     net_out = self.network(x_t, timestep=t.to(self.device))
 
             x_t_prev = self.var_scheduler.step(x_t, t, net_out, predictor=self.predictor)
-
 
             traj[-1] = traj[-1].cpu()
             traj.append(x_t_prev.detach())
