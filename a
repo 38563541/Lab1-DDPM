@@ -1,0 +1,100 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 🚀 Lab1-DDPM on Google Colab\n",
+    "這個 Notebook 幫你直接在 Colab 上跑 diffusion model (DDPM)。\n",
+    "\n",
+    "步驟:\n",
+    "1. 安裝依賴\n",
+    "2. 下載 AFHQ dataset\n",
+    "3. 訓練模型\n",
+    "4. 存結果到 `./results/`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# --- Clone repo ---\n",
+    "!git clone https://github.com/38563541/Lab1-DDPM.git\n",
+    "%cd Lab1-DDPM/image_diffusion_todo"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# --- Install requirements ---\n",
+    "!pip install -r requirements.txt\n",
+    "!pip install pytorch-lightning dotmap"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# --- Download AFHQ dataset ---\n",
+    "!mkdir -p ./data\n",
+    "%cd ./data\n",
+    "!wget https://www.cvml.ma.tum.de/fileadmin/w00bws/cv/afhq/afhq.zip\n",
+    "!unzip -q afhq.zip\n",
+    "!rm afhq.zip\n",
+    "%cd .."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# --- Check dataset ---\n",
+    "import os\n",
+    "print(\"Train categories:\", os.listdir(\"./data/afhq/train\"))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# --- Run training ---\n",
+    "!python train.py \\\n",
+    "  --gpu 0 \\\n",
+    "  --batch_size 16 \\\n",
+    "  --train_num_steps 10000 \\\n",
+    "  --log_interval 500 \\\n",
+    "  --num_diffusion_train_timesteps 1000 \\\n",
+    "  --beta_1 1e-4 \\\n",
+    "  --beta_T 0.02 \\\n",
+    "  --predictor noise \\\n",
+    "  --mode linear"
+   ]
+  }
+ ],
+ "metadata": {
+  "colab": {
+   "name": "lab1_ddpm_colab"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "name": "python"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}
