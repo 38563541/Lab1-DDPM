@@ -40,16 +40,24 @@ class BaseScheduler(nn.Module):
             # 2. Convert alphā_t into betas using:
             #       beta_t = 1 - alphā_t / alphā_{t-1}
             # 3. Return betas as a tensor of shape [num_train_timesteps].
-
+            
             s = 0.008
             steps = num_train_timesteps
             t = torch.arange(0, steps + 1, dtype=torch.float64)
+
             f = lambda tau: torch.cos(((tau / steps + s) / (1 + s)) * torch.pi / 2) ** 2
-            alphas_cumprod = f(t) / f(torch.tensor(0.0))
+            alphas_cumprod = f(t) / f(torch.tensor(0.0))  # normalize to start at 1
+
+            # Convert ᾱ_t to betas
             betas = []
             for i in range(1, steps + 1):
-                betas.append(1 - alphas_cumprod[i] / alphas_cumprod[i - 1])
+                beta = 1 - alphas_cumprod[i] / alphas_cumprod[i - 1]
+                betas.append(beta)
+
             betas = torch.tensor(betas, dtype=torch.float32)
+
+            # Clamp for numerical stability
+            betas = torch.clip(betas, min=1e-8, max=0.999)
             #######################
         else:
             raise NotImplementedError(f"{mode} is not implemented.")
