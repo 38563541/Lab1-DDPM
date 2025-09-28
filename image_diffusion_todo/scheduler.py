@@ -41,23 +41,22 @@ class BaseScheduler(nn.Module):
             #       beta_t = 1 - alphā_t / alphā_{t-1}
             # 3. Return betas as a tensor of shape [num_train_timesteps].
             s = 0.008  # small constant for stability
-            t = torch.arange(num_train_timesteps, dtype=torch.float32, device=self.device)
-
+            t = torch.arange(num_train_timesteps, dtype=torch.float32)
+        
             # Compute alpha_bar_t using cosine schedule
             cos_arg = ((t / num_train_timesteps + s) / (1 + s)) * (torch.pi / 2)
-            alpha_bar_t = torch.cos(torch.clamp(cos_arg, 0, torch.pi / 2)) ** 2
-            
-            # Compute betas
-            alpha_bar_t_prev = torch.cat([
-                torch.tensor([1.0], device=alpha_bar_t.device), 
-                alpha_bar_t[:-1]
-            ])
+            cos_arg = torch.clamp(cos_arg, 0, torch.pi / 2)
+            alpha_bar_t = torch.cos(cos_arg) ** 2
+        
+            # Previous alpha_bar values (alpha_bar_0 = 1 by definition)
+            alpha_bar_t_prev = torch.cat([torch.tensor([1.0], dtype=torch.float32), alpha_bar_t[:-1]])
+        
+            # Convert alpha_bar_t to betas
             eps = 1e-8
             betas = 1 - alpha_bar_t / (alpha_bar_t_prev + eps)
-            
-            # Clamp betas to safe range
-            betas = torch.clamp(betas, 1e-5, 0.999)
-
+        
+            # Clamp betas to valid range [0, 0.999]
+            betas = torch.clamp(betas, 1e-8, 0.999)
            
 
             #######################
