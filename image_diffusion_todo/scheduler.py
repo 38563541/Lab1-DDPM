@@ -40,24 +40,22 @@ class BaseScheduler(nn.Module):
             # 2. Convert alphā_t into betas using:
             #       beta_t = 1 - alphā_t / alphā_{t-1}
             # 3. Return betas as a tensor of shape [num_train_timesteps].
-            
             s = 0.008
-            steps = num_train_timesteps
-            t = torch.arange(0, steps + 1, dtype=torch.float64)
+            # Create timestep array from 0 to T
+            t = torch.arange(num_train_timesteps + 1, dtype=torch.float32)
+            
+            # Compute alpha_bar_t using cosine schedule
+            # f(t) = cos^2( ( (t/T + s) / (1+s) ) * (π/2) )
+            f = torch.cos((t / num_train_timesteps + s) / (1 + s) * torch.pi / 2) ** 2
+            alpha_bar = f / f[0]  # Normalize so alpha_bar_0 = 1
+            
+            # Compute betas from alpha_bar: beta_t = 1 - alpha_bar_t / alpha_bar_{t-1}
+            betas = 1 - alpha_bar[1:] / alpha_bar[:-1]
+            
+            # Clamp betas to prevent numerical issues
+            betas = torch.clamp(betas, 0, 0.999)
+           
 
-            f = lambda tau: torch.cos(((tau / steps + s) / (1 + s)) * torch.pi / 2) ** 2
-            alphas_cumprod = f(t) / f(torch.tensor(0.0))  # normalize to start at 1
-
-            # Convert ᾱ_t to betas
-            betas = []
-            for i in range(1, steps + 1):
-                beta = 1 - alphas_cumprod[i] / alphas_cumprod[i - 1]
-                betas.append(beta)
-
-            betas = torch.tensor(betas, dtype=torch.float32)
-
-            # Clamp for numerical stability
-            betas = torch.clip(betas, min=1e-8, max=0.999)
             #######################
         else:
             raise NotImplementedError(f"{mode} is not implemented.")
