@@ -47,11 +47,7 @@ class BaseScheduler(nn.Module):
             betas = 1 - alpha_bar[1:] / alpha_bar[:-1]
             betas = torch.clamp(betas, 0, 0.999).to(torch.float32)
 
-            # Compute betas from alpha_bar: beta_t = 1 - alpha_bar_t / alpha_bar_{t-1}
-            betas = 1 - alpha_bar[1:] / alpha_bar[:-1]
 
-            # Clamp betas to prevent numerical issues
-            betas = torch.clamp(betas, 1e-8, 0.999)
 
            
 
