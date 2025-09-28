@@ -41,19 +41,18 @@ class BaseScheduler(nn.Module):
             #       beta_t = 1 - alphā_t / alphā_{t-1}
             # 3. Return betas as a tensor of shape [num_train_timesteps].
             s = 0.008
-            # Create timestep array from 0 to T
-            t = torch.arange(num_train_timesteps + 1, dtype=torch.float32)
-            
-            # Compute alpha_bar_t using cosine schedule
-            # f(t) = cos^2( ( (t/T + s) / (1+s) ) * (π/2) )
+            t = torch.arange(num_train_timesteps + 1, dtype=torch.float64)
             f = torch.cos((t / num_train_timesteps + s) / (1 + s) * torch.pi / 2) ** 2
-            alpha_bar = f / f[0]  # Normalize so alpha_bar_0 = 1
-            
+            alpha_bar = f / f[0]
+            betas = 1 - alpha_bar[1:] / alpha_bar[:-1]
+            betas = torch.clamp(betas, 0, 0.999).to(torch.float32)
+
             # Compute betas from alpha_bar: beta_t = 1 - alpha_bar_t / alpha_bar_{t-1}
             betas = 1 - alpha_bar[1:] / alpha_bar[:-1]
-            
+
             # Clamp betas to prevent numerical issues
-            betas = torch.clamp(betas, 0, 0.999)
+            betas = torch.clamp(betas, 1e-8, 0.999)
+
            
 
             #######################
