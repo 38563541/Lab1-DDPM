@@ -216,13 +216,15 @@ class DDPMScheduler(BaseScheduler):
             torch.tensor([t], device=x_t.device),
         )
 
-        # posterior variance
+        # posterior variance (same as noise/x0 predictor)
         posterior_var = (1 - alpha_bar_t_prev) / (1 - alpha_bar_t) * beta_t
 
+        # if not the final step, add noise
         if t > 0:
             noise = torch.randn_like(x_t)
             sample_prev = mean_theta + torch.sqrt(posterior_var) * noise
         else:
+        # at t=0, no noise is added
             sample_prev = mean_theta
         #######################
         return sample_prev
