@@ -83,7 +83,7 @@ def main(args):
     ds_module = AFHQDataModule(
         "./data",
         batch_size=config.batch_size,
-        num_workers=4,
+        num_workers=8,
         max_num_images_per_cat=config.max_num_images_per_cat,
         image_resolution=image_resolution
     )
