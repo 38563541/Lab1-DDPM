@@ -115,7 +115,7 @@ def main(args):
     ddpm = DiffusionModule(network, var_scheduler, predictor=config.predictor)
     ddpm = ddpm.to(config.device)
 
-    optimizer = torch.optim.Adam(ddpm.network.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(ddpm.network.parameters(), lr=5e-5)
     scheduler = torch.optim.lr_scheduler.LambdaLR(
         optimizer, lr_lambda=lambda t: min((t + 1) / config.warmup_steps, 1.0)
     )

@@ -28,15 +28,17 @@ class BaseScheduler(nn.Module):
             betas = torch.linspace(beta_1**0.5, beta_T**0.5, num_train_timesteps) ** 2
         elif mode == "cosine":
             # Nichol & Dhariwal cosine schedule
+            
             s = 0.008
             t = torch.arange(num_train_timesteps + 1, dtype=torch.float32)
             f_t = torch.cos(((t / num_train_timesteps + s) / (1 + s)) * torch.pi / 2) ** 2
             alpha_bar = f_t / f_t[0]
-
+        
             betas = []
             for i in range(1, num_train_timesteps + 1):
                 betas.append(1 - alpha_bar[i] / alpha_bar[i - 1])
-            betas = torch.clip(torch.tensor(betas), 1e-8, 0.999)
+            betas = torch.clip(torch.tensor(betas, dtype=torch.float32), 1e-8, 0.999)
+        
         else:
             raise NotImplementedError(f"{mode} is not implemented.")
 
