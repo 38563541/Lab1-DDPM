@@ -178,15 +178,16 @@ class DDPMScheduler(BaseScheduler):
             torch.cat([torch.tensor([1.0], device=x_t.device), self.alphas_cumprod[:-1]]),
             torch.tensor([t], device=x_t.device),
         )
-    
-        # (1) eps -> x0_pred
-        x0_pred = (x_t - torch.sqrt(1 - alpha_bar_t) * net_out) / torch.sqrt(alpha_bar_t)
-    
+
+        # (1) eps -> x0_pred   (這裡把 mean_theta 當成 eps_theta 用)
+        eps_theta = mean_theta
+        x0_pred = (x_t - torch.sqrt(1 - alpha_bar_t) * eps_theta) / torch.sqrt(alpha_bar_t)
+        
         # (2) posterior mean
         coef_x0 = (torch.sqrt(alpha_bar_prev) * beta_t) / (1 - alpha_bar_t)
         coef_xt = (torch.sqrt(alpha_t) * (1 - alpha_bar_prev)) / (1 - alpha_bar_t)
         mean_theta = coef_x0 * x0_pred + coef_xt * x_t
-    
+
         # (3) posterior variance
         posterior_var = (1 - alpha_bar_prev) / (1 - alpha_bar_t) * beta_t
         if t > 0:
@@ -194,9 +195,9 @@ class DDPMScheduler(BaseScheduler):
             sample_prev = mean_theta + torch.sqrt(posterior_var) * noise
         else:
             sample_prev = mean_theta
-    
-    
-    
+
+
+
             #######################
         return sample_prev
 
