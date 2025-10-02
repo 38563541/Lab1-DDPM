@@ -180,14 +180,14 @@ class DDPMScheduler(BaseScheduler):
         )
     
         # (1) eps -> x0_pred
-        x0_pred = (x_t - torch.sqrt(1 - alpha_bar_t) * eps_pred) / torch.sqrt(alpha_bar_t)
+        x0_pred = (x_t - torch.sqrt(1 - alpha_bar_t) * net_out) / torch.sqrt(alpha_bar_t)
     
         # (2) posterior mean
         coef_x0 = (torch.sqrt(alpha_bar_prev) * beta_t) / (1 - alpha_bar_t)
         coef_xt = (torch.sqrt(alpha_t) * (1 - alpha_bar_prev)) / (1 - alpha_bar_t)
         mean_theta = coef_x0 * x0_pred + coef_xt * x_t
     
-        # (3) 加 noise (t>0 才加)
+        # (3) posterior variance
         posterior_var = (1 - alpha_bar_prev) / (1 - alpha_bar_t) * beta_t
         if t > 0:
             noise = torch.randn_like(x_t)
@@ -196,8 +196,8 @@ class DDPMScheduler(BaseScheduler):
             sample_prev = mean_theta
     
     
-            
-        #######################
+    
+            #######################
         return sample_prev
 
     # ----------------- Posterior (for training loss) -----------------
